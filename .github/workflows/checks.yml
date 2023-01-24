@@ -31,7 +31,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+        run: composer update --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
 
       - name: Composer Require Checker
         run: composer check-deps
@@ -63,7 +63,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+        run: composer update --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
 
       - name: PHPCS
         run: composer cs-check
@@ -95,7 +95,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+        run: composer update --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
 
       - name: PHPStan
         run: composer phpstan
@@ -127,7 +127,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+        run: composer update --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
 
       - name: Psalm
         run: composer psalm
@@ -159,7 +159,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+        run: composer update --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
 
       - name: Infection coverage of changed lines
         if: "!contains(github.event.pull_request.labels.*.name, 'skip-infection')"
@@ -208,7 +208,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
 
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+        run: composer update --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
 
       - name: Tests
         run: vendor/bin/phpunit --coverage-clover=coverage.xml --stop-on-failure
