@@ -1,0 +1,215 @@
+name: Check Build
+
+on: [pull_request, push]
+
+jobs:
+
+  composer-require-checker:
+    strategy:
+      matrix:
+        php: ["8.1", "8.2"]
+        deps: ["--prefer-lowest", ""]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+
+      - name: Composer Require Checker
+        run: composer check-deps
+
+  phpcs:
+    strategy:
+      matrix:
+        php: ["8.1", "8.2"]
+        deps: ["--prefer-lowest", ""]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+
+      - name: PHPCS
+        run: composer cs-check
+
+  phpstan:
+    strategy:
+      matrix:
+        php: ["8.1", "8.2"]
+        deps: ["--prefer-lowest", ""]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+
+      - name: PHPStan
+        run: composer phpstan
+
+  psalm:
+    strategy:
+      matrix:
+        php: ["8.1", "8.2"]
+        deps: ["--prefer-lowest", ""]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+
+      - name: Psalm
+        run: composer psalm
+
+  infection:
+    strategy:
+      matrix:
+        php: ["8.1", "8.2"]
+        deps: ["--prefer-lowest", ""]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+
+      - name: Infection coverage of changed lines
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-infection')"
+        run: |
+          git fetch origin $GITHUB_BASE_REF $GITHUB_HEAD_REF
+          vendor/bin/infection \
+            --git-diff-base=origin/$GITHUB_BASE_REF \
+            --git-diff-lines \
+            --logger-github \
+            --min-msi=100 \
+            --min-covered-msi=100 \
+            --ignore-msi-with-no-mutations \
+            -jmax
+
+      - name: Save Infection result
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: infection-log-${{ matrix.php }}-${{ matrix.deps }}.txt
+          path: infection-log.txt
+
+  phpunit:
+    strategy:
+      matrix:
+        php: ["8.1", "8.2"]
+        deps: ["--prefer-lowest", ""]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php }}-${{ matrix.deps }}-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-suggest ${{ matrix.deps }}
+
+      - name: Tests
+        run: vendor/bin/phpunit --coverage-clover=coverage.xml --stop-on-failure
+
