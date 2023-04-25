@@ -13,6 +13,7 @@ use Eventjet\Test\Unit\Json\Fixtures\GitHub\RepositoryOwner;
 use Eventjet\Test\Unit\Json\Fixtures\HasImportedListItemType;
 use Eventjet\Test\Unit\Json\Fixtures\HasIntersectionType;
 use Eventjet\Test\Unit\Json\Fixtures\HasListOfStrings;
+use Eventjet\Test\Unit\Json\Fixtures\HasMapOfObjects;
 use Eventjet\Test\Unit\Json\Fixtures\HasNestedClass;
 use Eventjet\Test\Unit\Json\Fixtures\HasUnionType;
 use Eventjet\Test\Unit\Json\Fixtures\InvalidArrayConstructorParamTag;
@@ -23,10 +24,13 @@ use Eventjet\Test\Unit\Json\Fixtures\PromotedPropertyWithMissingType;
 use Eventjet\Test\Unit\Json\Fixtures\SomePropertiesAreNotConstructorArguments;
 use Eventjet\Test\Unit\Json\Fixtures\StringField;
 use Eventjet\Test\Unit\Json\Fixtures\TakesAListOfDateTimes;
+use Eventjet\Test\Unit\Json\Fixtures\TakesMapOrNull;
 use Eventjet\Test\Unit\Json\Fixtures\TakesMultilineList;
 use Eventjet\Test\Unit\Json\Fixtures\TakesNonBackedEnum;
+use Eventjet\Test\Unit\Json\Fixtures\TakesStringStringMap;
 use Eventjet\Test\Unit\Json\Fixtures\UndocumentedListItemType;
 use Eventjet\Test\Unit\Json\Fixtures\UndocumentedListItemTypeNoDocblock;
+use Eventjet\Test\Unit\Json\Fixtures\UndocumentedMap;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFile;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFileAttribute;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFileAttributeMustWriteReason;
@@ -56,7 +60,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{mixed, string}>
      */
-    public function encodeCases(): iterable
+    public static function encodeCases(): iterable
     {
         yield 'null' => [null, 'null'];
         yield 'true' => [true, 'true'];
@@ -122,7 +126,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{string, object | class-string, callable(object): void}>
      */
-    public function decodeCases(): iterable
+    public static function decodeCases(): iterable
     {
         yield 'Struct with string field' => [
             '{"name":"Joe"}',
@@ -285,6 +289,38 @@ final class JsonTest extends TestCase
                 self::assertSame('foo', $object->items[0]);
             },
         ];
+        yield 'Map of objects' => [
+            '{"map":{"foo":{"name":"Foo"},"bar":{"name":"Bar"}}}',
+            HasMapOfObjects::class,
+            static function (object $object): void {
+                self::assertInstanceOf(HasMapOfObjects::class, $object);
+                self::assertCount(2, $object->map);
+                self::assertArrayHasKey('foo', $object->map);
+                self::assertArrayHasKey('bar', $object->map);
+                self::assertSame('Foo', $object->map['foo']->name);
+                self::assertSame('Bar', $object->map['bar']->name);
+            },
+        ];
+        yield 'String-string map' => [
+            '{"map":{"foo":"Foo","bar":"Bar"}}',
+            TakesStringStringMap::class,
+            static function (object $object): void {
+                self::assertInstanceOf(TakesStringStringMap::class, $object);
+                self::assertCount(2, $object->map);
+                self::assertArrayHasKey('foo', $object->map);
+                self::assertArrayHasKey('bar', $object->map);
+                self::assertSame('Foo', $object->map['foo']);
+                self::assertSame('Bar', $object->map['bar']);
+            },
+        ];
+        yield 'Null for nullable map' => [
+            '{"map":null}',
+            TakesMapOrNull::class,
+            static function (object $object): void {
+                self::assertInstanceOf(TakesMapOrNull::class, $object);
+                self::assertNull($object->map);
+            },
+        ];
     }
 
     /**
@@ -302,7 +338,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{object}>
      */
-    public function roundtripsCases(): iterable
+    public static function roundtripsCases(): iterable
     {
         yield 'GitHub repository response' => [
             new Repository(
@@ -371,7 +407,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{mixed}>
      */
-    public function failingEncodeCases(): iterable
+    public static function failingEncodeCases(): iterable
     {
         yield 'Resource' => [fopen('php://memory', 'r')];
         yield 'Resource in array' => [[fopen('php://memory', 'r')]];
@@ -395,7 +431,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{0: string, 1: object | class-string, 2?: string}>
      */
-    public function failingDecodeCases(): iterable
+    public static function failingDecodeCases(): iterable
     {
         yield 'Invalid JSON' => ['{', new StringField(), 'JSON decoding failed'];
         yield 'Union field' => [
@@ -525,7 +561,19 @@ final class JsonTest extends TestCase
         yield 'JSON object for constructor argument that takes a list' => [
             '{"tags":{"foo":"bar"}}',
             HasListOfStrings::class,
-            'Expected a JSON array for parameter "tags", got a JSON object',
+            'The type of the constructor parameter "tags" for class Eventjet\Test\Unit\Json\Fixtures\HasListOfStrings '
+            . 'is wrong. Expected "array<K, V>", got "list<string>"',
+        ];
+        yield 'String for map value expecting objects' => [
+            '{"map":{"foo":"bar"}}',
+            HasMapOfObjects::class,
+            'Expected an array for the value of key "foo" in parameter "map", got string',
+        ];
+        yield 'Undocumented map' => [
+            '{"map":{"foo":{"bar":"baz"}}}',
+            UndocumentedMap::class,
+            'The type of the constructor parameter "map" for class Eventjet\Test\Unit\Json\Fixtures\UndocumentedMap is '
+            . '"array", but its shape is not documented',
         ];
     }
 }

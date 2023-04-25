@@ -491,7 +491,7 @@ final class Json
     }
 
     /**
-     * @return list<mixed>
+     * @return list<mixed> | array<string, mixed>
      */
     private static function createConstructorArgumentForArrayType(
         ReflectionParameter $parameter,
@@ -500,21 +500,23 @@ final class Json
         if ($value === null && $parameter->allowsNull()) {
             return null;
         }
-        $paramName = $parameter->getName();
         if (!is_array($value)) {
             throw JsonError::decodeFailed(
-                sprintf(
-                    'Expected array for parameter "%s", got %s',
-                    $paramName,
-                    gettype($value),
-                ),
+                sprintf('Expected array for parameter "%s", got %s', $parameter->getName(), gettype($value)),
             );
         }
-        if (!array_is_list($value)) {
-            throw JsonError::decodeFailed(
-                sprintf('Expected a JSON array for parameter "%s", got a JSON object', $paramName),
-            );
-        }
+        return array_is_list($value)
+            ? self::createConstructorArgumentForListType($parameter, $value)
+            : self::createConstructorArgumentForMapType($parameter, $value);
+    }
+
+    /**
+     * @param list<mixed> $value
+     * @return list<mixed>
+     */
+    private static function createConstructorArgumentForListType(ReflectionParameter $parameter, array $value): array
+    {
+        $paramName = $parameter->getName();
         $constructorDoc = $parameter->getDeclaringFunction()->getDocComment();
         $class = $parameter->getDeclaringClass();
         assert($class !== null);
@@ -552,6 +554,46 @@ final class Json
             }
         }
         return $items;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @return array<array-key, mixed>
+     */
+    private static function createConstructorArgumentForMapType(ReflectionParameter $parameter, array $value): array
+    {
+        $paramName = $parameter->getName();
+        $valueType = self::getMapValueType($parameter);
+        if ($valueType === null) {
+            $class = $parameter->getDeclaringClass();
+            assert($class !== null);
+            throw JsonError::decodeFailed(
+                sprintf(
+                    'The type of the constructor parameter "%s" for class %s is "array", but its shape is not '
+                    . 'documented',
+                    $paramName,
+                    $class->getName(),
+                ),
+            );
+        }
+        if (!class_exists($valueType)) {
+            return $value;
+        }
+        $result = [];
+        foreach ($value as $key => $item) {
+            if (!is_array($item)) {
+                throw JsonError::decodeFailed(
+                    sprintf(
+                        'Expected an array for the value of key "%s" in parameter "%s", got %s',
+                        $key,
+                        $paramName,
+                        gettype($item),
+                    ),
+                );
+            }
+            $result[$key] = self::instantiateClass($valueType, $item);
+        }
+        return $result;
     }
 
     /**
@@ -593,5 +635,43 @@ final class Json
             );
         }
         return $case;
+    }
+
+    private static function getMapValueType(ReflectionParameter $parameter): string|null
+    {
+        $constructorDoc = $parameter->getDeclaringFunction()->getDocComment();
+        if ($constructorDoc === false) {
+            return null;
+        }
+        $paramName = $parameter->getName();
+        $class = $parameter->getDeclaringClass();
+        assert($class !== null);
+        $serializedType = self::findParamTagType(self::parseDocTags($constructorDoc), $paramName);
+        if ($serializedType === null) {
+            return null;
+        }
+        $valueType = self::mapValueType(self::nonNullable($serializedType));
+        if ($valueType === null) {
+            throw JsonError::decodeFailed(
+                sprintf(
+                    'The type of the constructor parameter "%s" for class %s is wrong. Expected "array<K, V>", got '
+                    . '"%s"',
+                    $paramName,
+                    $class->getName(),
+                    $serializedType,
+                ),
+            );
+        }
+        return self::aliasToFqcn($valueType, $class);
+    }
+
+    private static function mapValueType(string $typeString): string|null
+    {
+        // @infection-ignore-all Skip preg_match mutants for now
+        $result = preg_match('/^array<.+,\s*(.+)>$/', $typeString, $matches);
+        if ($result !== 1) {
+            return null;
+        }
+        return $matches[1];
     }
 }
