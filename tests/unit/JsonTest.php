@@ -60,7 +60,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{mixed, string}>
      */
-    public function encodeCases(): iterable
+    public static function encodeCases(): iterable
     {
         yield 'null' => [null, 'null'];
         yield 'true' => [true, 'true'];
@@ -126,7 +126,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{string, object | class-string, callable(object): void}>
      */
-    public function decodeCases(): iterable
+    public static function decodeCases(): iterable
     {
         yield 'Struct with string field' => [
             '{"name":"Joe"}',
@@ -338,7 +338,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{object}>
      */
-    public function roundtripsCases(): iterable
+    public static function roundtripsCases(): iterable
     {
         yield 'GitHub repository response' => [
             new Repository(
@@ -407,7 +407,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{mixed}>
      */
-    public function failingEncodeCases(): iterable
+    public static function failingEncodeCases(): iterable
     {
         yield 'Resource' => [fopen('php://memory', 'r')];
         yield 'Resource in array' => [[fopen('php://memory', 'r')]];
@@ -431,7 +431,7 @@ final class JsonTest extends TestCase
     /**
      * @return iterable<string, array{0: string, 1: object | class-string, 2?: string}>
      */
-    public function failingDecodeCases(): iterable
+    public static function failingDecodeCases(): iterable
     {
         yield 'Invalid JSON' => ['{', new StringField(), 'JSON decoding failed'];
         yield 'Union field' => [
