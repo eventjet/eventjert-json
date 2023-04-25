@@ -511,85 +511,6 @@ final class Json
     }
 
     /**
-     * @template T of BackedEnum
-     * @param class-string<T> $typeName
-     * @return T
-     */
-    private static function createConstructorArgumentForEnumType(
-        mixed $value,
-        string $paramName,
-        string $typeName,
-    ): BackedEnum {
-        if (!is_string($value) && !is_int($value)) {
-            throw JsonError::decodeFailed(
-                sprintf(
-                    'Expected string or int for parameter "%s", got %s',
-                    $paramName,
-                    gettype($value),
-                ),
-            );
-        }
-        /**
-         * @psalm-suppress MixedAssignment
-         * @psalm-suppress MixedMethodCall
-         */
-        $case = $typeName::tryFrom($value);
-        if ($case === null) {
-            /**
-             * @psalm-suppress MixedArgument
-             * @psalm-suppress MixedMethodCall
-             */
-            throw JsonError::decodeFailed(
-                sprintf(
-                    '"%s" is not a valid value for enum %s. Valid values are: %s',
-                    $value,
-                    $typeName,
-                    implode(', ', array_map(static fn(BackedEnum $case) => $case->value, $typeName::cases())),
-                ),
-            );
-        }
-        return $case;
-    }
-
-    private static function getMapValueType(ReflectionParameter $parameter): string|null
-    {
-        $constructorDoc = $parameter->getDeclaringFunction()->getDocComment();
-        if ($constructorDoc === false) {
-            return null;
-        }
-        $paramName = $parameter->getName();
-        $class = $parameter->getDeclaringClass();
-        assert($class !== null);
-        $serializedType = self::findParamTagType(self::parseDocTags($constructorDoc), $paramName);
-        if ($serializedType === null) {
-            return null;
-        }
-        $valueType = self::mapValueType(self::nonNullable($serializedType));
-        if ($valueType === null) {
-            throw JsonError::decodeFailed(
-                sprintf(
-                    'The type of the constructor parameter "%s" for class %s is wrong. Expected "array<K, V>", got '
-                    . '"%s"',
-                    $paramName,
-                    $class->getName(),
-                    $serializedType,
-                ),
-            );
-        }
-        return self::aliasToFqcn($valueType, $class);
-    }
-
-    private static function mapValueType(string $typeString): string|null
-    {
-        // @infection-ignore-all Skip preg_match mutants for now
-        $result = preg_match('/^array<.+,\s*(.+)>$/', $typeString, $matches);
-        if ($result !== 1) {
-            return null;
-        }
-        return $matches[1];
-    }
-
-    /**
      * @param list<mixed> $value
      * @return list<mixed>
      */
@@ -673,5 +594,84 @@ final class Json
             $result[$key] = self::instantiateClass($valueType, $item);
         }
         return $result;
+    }
+
+    /**
+     * @template T of BackedEnum
+     * @param class-string<T> $typeName
+     * @return T
+     */
+    private static function createConstructorArgumentForEnumType(
+        mixed $value,
+        string $paramName,
+        string $typeName,
+    ): BackedEnum {
+        if (!is_string($value) && !is_int($value)) {
+            throw JsonError::decodeFailed(
+                sprintf(
+                    'Expected string or int for parameter "%s", got %s',
+                    $paramName,
+                    gettype($value),
+                ),
+            );
+        }
+        /**
+         * @psalm-suppress MixedAssignment
+         * @psalm-suppress MixedMethodCall
+         */
+        $case = $typeName::tryFrom($value);
+        if ($case === null) {
+            /**
+             * @psalm-suppress MixedArgument
+             * @psalm-suppress MixedMethodCall
+             */
+            throw JsonError::decodeFailed(
+                sprintf(
+                    '"%s" is not a valid value for enum %s. Valid values are: %s',
+                    $value,
+                    $typeName,
+                    implode(', ', array_map(static fn(BackedEnum $case) => $case->value, $typeName::cases())),
+                ),
+            );
+        }
+        return $case;
+    }
+
+    private static function getMapValueType(ReflectionParameter $parameter): string|null
+    {
+        $constructorDoc = $parameter->getDeclaringFunction()->getDocComment();
+        if ($constructorDoc === false) {
+            return null;
+        }
+        $paramName = $parameter->getName();
+        $class = $parameter->getDeclaringClass();
+        assert($class !== null);
+        $serializedType = self::findParamTagType(self::parseDocTags($constructorDoc), $paramName);
+        if ($serializedType === null) {
+            return null;
+        }
+        $valueType = self::mapValueType(self::nonNullable($serializedType));
+        if ($valueType === null) {
+            throw JsonError::decodeFailed(
+                sprintf(
+                    'The type of the constructor parameter "%s" for class %s is wrong. Expected "array<K, V>", got '
+                    . '"%s"',
+                    $paramName,
+                    $class->getName(),
+                    $serializedType,
+                ),
+            );
+        }
+        return self::aliasToFqcn($valueType, $class);
+    }
+
+    private static function mapValueType(string $typeString): string|null
+    {
+        // @infection-ignore-all Skip preg_match mutants for now
+        $result = preg_match('/^array<.+,\s*(.+)>$/', $typeString, $matches);
+        if ($result !== 1) {
+            return null;
+        }
+        return $matches[1];
     }
 }
