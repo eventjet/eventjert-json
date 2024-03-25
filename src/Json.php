@@ -52,6 +52,16 @@ final class Json
     }
 
     /**
+     * @template T of object
+     * @param T | class-string<T> $value
+     * @return T
+     */
+    public static function decode(string $json, object|string $value): object
+    {
+        return self::decodeClass($json, $value);
+    }
+
+    /**
      * @psalm-suppress MixedInferredReturnType
      * @return string|int|float|bool|array<array-key, mixed>|null
      */
@@ -103,16 +113,6 @@ final class Json
     private static function getJsonKeyForProperty(ReflectionProperty $property): string
     {
         return ($property->getAttributes(Field::class)[0] ?? null)?->newInstance()->name ?? $property->getName();
-    }
-
-    /**
-     * @template T of object
-     * @param T | class-string<T> $value
-     * @return T
-     */
-    public static function decode(string $json, object|string $value): object
-    {
-        return self::decodeClass($json, $value);
     }
 
     /**
