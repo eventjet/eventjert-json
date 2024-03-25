@@ -48,8 +48,8 @@
             "@infection"
         ],
         "check-deps": "vendor/bin/composer-require-checker",
-        "cs-check": "vendor/bin/phpcs",
-        "cs-fix": "vendor/bin/phpcbf",
+        "cs-check": "php-cs-fixer fix --dry-run",
+        "cs-fix": "php-cs-fixer fix",
         "infection": "vendor/bin/infection -jmax",
         "phpstan": "vendor/bin/phpstan",
         "phpunit": "vendor/bin/phpunit",

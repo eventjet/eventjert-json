@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Eventjet\Test\Unit\Json;
 
 use DateTimeInterface;
+use DoesNotExist;
 use Eventjet\Json\Json;
 use Eventjet\Json\JsonError;
 use Eventjet\Test\Unit\Json\Fixtures\ConstructorTakesAnUnknownClass;
@@ -39,6 +40,7 @@ use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFileDisplayHints;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\LabelTemplateElement;
 use Eventjet\Test\Unit\Json\Fixtures\WrongArrayDocblockType;
 use PHPUnit\Framework\TestCase;
+use ThisClassDoesNotExist;
 
 use function assert;
 use function file_get_contents;
@@ -47,16 +49,6 @@ use function get_class;
 
 final class JsonTest extends TestCase
 {
-    /**
-     * @dataProvider encodeCases
-     */
-    public function testEncode(mixed $value, string $expected): void
-    {
-        $encoded = Json::encode($value);
-
-        self::assertSame($expected, $encoded);
-    }
-
     /**
      * @return iterable<string, array{mixed, string}>
      */
@@ -109,18 +101,6 @@ final class JsonTest extends TestCase
             new PersonList([new Person('John Doe', 42), new Person('Jane Doe', 42)]),
             '{"people":[{"full_name":"John Doe","age":42},{"full_name":"Jane Doe","age":42}]}',
         ];
-    }
-
-    /**
-     * @param object | class-string $object
-     * @param callable(object): void $test
-     * @dataProvider decodeCases
-     */
-    public function testDecode(string $json, object|string $object, callable $test): void
-    {
-        $object = Json::decode($json, $object);
-
-        $test($object);
     }
 
     /**
@@ -324,18 +304,6 @@ final class JsonTest extends TestCase
     }
 
     /**
-     * @dataProvider roundtripsCases
-     */
-    public function testRoundtrips(object $value): void
-    {
-        $encoded1 = Json::encode($value);
-        Json::decode($encoded1, get_class($value));
-        $encoded2 = Json::encode($value);
-
-        self::assertJsonStringEqualsJsonString($encoded1, $encoded2);
-    }
-
-    /**
      * @return iterable<string, array{object}>
      */
     public static function roundtripsCases(): iterable
@@ -394,38 +362,12 @@ final class JsonTest extends TestCase
     }
 
     /**
-     * @dataProvider failingEncodeCases
-     */
-    public function testFailingEncode(mixed $value): void
-    {
-        $this->expectException(JsonError::class);
-        $this->expectExceptionCode(0);
-
-        Json::encode($value);
-    }
-
-    /**
      * @return iterable<string, array{mixed}>
      */
     public static function failingEncodeCases(): iterable
     {
         yield 'Resource' => [fopen('php://memory', 'r')];
         yield 'Resource in array' => [[fopen('php://memory', 'r')]];
-    }
-
-    /**
-     * @param object | class-string $object
-     * @dataProvider failingDecodeCases
-     */
-    public function testFailingDecode(string $json, object|string $object, string|null $expectedMessage = null): void
-    {
-        $this->expectException(JsonError::class);
-        $this->expectExceptionCode(0);
-        if ($expectedMessage !== null) {
-            $this->expectExceptionMessage($expectedMessage);
-        }
-
-        Json::decode($json, $object);
     }
 
     /**
@@ -436,7 +378,7 @@ final class JsonTest extends TestCase
         yield 'Invalid JSON' => ['{', new StringField(), 'JSON decoding failed'];
         yield 'Union field' => [
             '{"nested":{"name":"Test"}}',
-            new class () {
+            new class {
                 public function __construct(public StringField|NullableStringField|null $nested = null)
                 {
                 }
@@ -461,11 +403,11 @@ final class JsonTest extends TestCase
         ];
         yield 'Unknown field type' => [
             '{"nested":{"name":"Test"}}',
-            new class () {
+            new class {
                 /**
                  * @phpstan-ignore-next-line
                  */
-                public function __construct(public \DoesNotExist|null $nested = null)
+                public function __construct(public DoesNotExist|null $nested = null)
                 {
                 }
             },
@@ -549,7 +491,7 @@ final class JsonTest extends TestCase
         /** @psalm-suppress UndefinedClass */
         yield 'Class does not exist' => [
             '{}',
-            \ThisClassDoesNotExist::class, // @phpstan-ignore-line
+            ThisClassDoesNotExist::class, // @phpstan-ignore-line
             'Class "ThisClassDoesNotExist" does not exist',
         ];
         yield 'Non-backed enum' => [
@@ -575,5 +517,65 @@ final class JsonTest extends TestCase
             'The type of the constructor parameter "map" for class Eventjet\Test\Unit\Json\Fixtures\UndocumentedMap is '
             . '"array", but its shape is not documented',
         ];
+    }
+
+    /**
+     * @dataProvider encodeCases
+     */
+    public function testEncode(mixed $value, string $expected): void
+    {
+        $encoded = Json::encode($value);
+
+        self::assertSame($expected, $encoded);
+    }
+
+    /**
+     * @param object | class-string $object
+     * @param callable(object): void $test
+     * @dataProvider decodeCases
+     */
+    public function testDecode(string $json, object|string $object, callable $test): void
+    {
+        $object = Json::decode($json, $object);
+
+        $test($object);
+    }
+
+    /**
+     * @dataProvider roundtripsCases
+     */
+    public function testRoundtrips(object $value): void
+    {
+        $encoded1 = Json::encode($value);
+        Json::decode($encoded1, get_class($value));
+        $encoded2 = Json::encode($value);
+
+        self::assertJsonStringEqualsJsonString($encoded1, $encoded2);
+    }
+
+    /**
+     * @dataProvider failingEncodeCases
+     */
+    public function testFailingEncode(mixed $value): void
+    {
+        $this->expectException(JsonError::class);
+        $this->expectExceptionCode(0);
+
+        Json::encode($value);
+    }
+
+    /**
+     * @param object | class-string $object
+     * @dataProvider failingDecodeCases
+     */
+    public function testFailingDecode(string $json, object|string $object, string|null $expectedMessage = null): void
+    {
+        $this->expectException(JsonError::class);
+        $this->expectExceptionCode(0);
+        if ($expectedMessage !== null) {
+            $this->expectExceptionMessage($expectedMessage);
+        }
+
+        Json::decode($json, $object);
     }
 }
