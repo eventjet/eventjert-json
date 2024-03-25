@@ -34,6 +34,14 @@ final class Boolean extends JsonType
         return new self(false);
     }
 
+    public function __toString(): string
+    {
+        if ($this->value === null) {
+            return 'boolean';
+        }
+        return $this->value ? 'true' : 'false';
+    }
+
     public function validateValue(mixed $value, string $path = ''): ValidationResult
     {
         if ($this->value === null) {
@@ -49,13 +57,5 @@ final class Boolean extends JsonType
             sprintf('Expected %s, got %s.', json_encode($this->value), json_encode($value)),
             $path,
         );
-    }
-
-    public function __toString(): string
-    {
-        if ($this->value === null) {
-            return 'boolean';
-        }
-        return $this->value ? 'true' : 'false';
     }
 }

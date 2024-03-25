@@ -14,13 +14,13 @@ final class ValidationIssue implements Stringable
     {
     }
 
-    public function equals(self $other): bool
-    {
-        return $this->message === $other->message && $this->path === $other->path;
-    }
-
     public function __toString(): string
     {
         return sprintf('%s at %s', $this->message, $this->path);
+    }
+
+    public function equals(self $other): bool
+    {
+        return $this->message === $other->message && $this->path === $other->path;
     }
 }

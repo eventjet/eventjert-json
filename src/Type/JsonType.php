@@ -17,7 +17,7 @@ use const JSON_ERROR_NONE;
  */
 abstract class JsonType implements Stringable
 {
-    public static function array(JsonType $elementType): Array_
+    public static function array(self $elementType): Array_
     {
         return new Array_($elementType);
     }
@@ -63,7 +63,7 @@ abstract class JsonType implements Stringable
     /**
      * @no-named-arguments
      */
-    public static function union(JsonType $first, JsonType $second, JsonType ...$other): Union
+    public static function union(self $first, self $second, self ...$other): Union
     {
         return new Union($first, $second, ...$other);
     }
@@ -73,7 +73,10 @@ abstract class JsonType implements Stringable
         return $prefix === '' ? (string)$key : sprintf("%s.%d", $prefix, $key);
     }
 
-    abstract public function validateValue(mixed $value, string $path = ''): ValidationResult;
+    /**
+     * Returns a string representation of the type in TypeScript syntax.
+     */
+    abstract public function __toString(): string;
 
     public function or(self $other): Union
     {
@@ -102,8 +105,5 @@ abstract class JsonType implements Stringable
         return $this;
     }
 
-    /**
-     * Returns a string representation of the type in TypeScript syntax.
-     */
-    abstract public function __toString(): string;
+    abstract public function validateValue(mixed $value, string $path = ''): ValidationResult;
 }

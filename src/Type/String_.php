@@ -17,16 +17,16 @@ final class String_ extends JsonType
     {
     }
 
+    public function __toString(): string
+    {
+        return 'string';
+    }
+
     public function validateValue(mixed $value, string $path = ''): ValidationResult
     {
         if (!is_string($value)) {
             return ValidationResult::error(sprintf('Expected string, got %s.', json_encode($value)), $path);
         }
         return ValidationResult::valid();
-    }
-
-    public function __toString(): string
-    {
-        return 'string';
     }
 }
