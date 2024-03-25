@@ -52,6 +52,16 @@ final class Json
     }
 
     /**
+     * @template T of object
+     * @param T | class-string<T> $value
+     * @return T
+     */
+    public static function decode(string $json, object|string $value): object
+    {
+        return self::decodeClass($json, $value);
+    }
+
+    /**
      * @psalm-suppress MixedInferredReturnType
      * @return string|int|float|bool|array<array-key, mixed>|null
      */
@@ -109,16 +119,6 @@ final class Json
      * @template T of object
      * @param T | class-string<T> $value
      * @return T
-     */
-    public static function decode(string $json, object|string $value): object
-    {
-        return self::decodeClass($json, $value);
-    }
-
-    /**
-     * @template T of object
-     * @param T | class-string<T> $value
-     * @return T
      * @psalm-suppress InvalidReturnType
      */
     private static function decodeClass(string $json, object|string $value): object
@@ -132,9 +132,9 @@ final class Json
         }
         /** @psalm-suppress DocblockTypeContradiction */
         if (!is_string($value)) {
-            /** @psalm-suppress MixedArgument */
+            /** @psalm-suppress NoValue */
             self::populateObject($value, $data);
-            /** @psalm-suppress InvalidReturnStatement */
+            /** @psalm-suppress NoValue */
             return $value;
         }
         if (!class_exists($value)) {
