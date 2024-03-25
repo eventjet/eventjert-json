@@ -19,4 +19,9 @@ final class Member
     {
         return new self($type, false);
     }
+
+    public function withCanonicalizedType(): self
+    {
+        return new self($this->type->canonicalize(), $this->required);
+    }
 }

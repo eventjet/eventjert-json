@@ -132,9 +132,9 @@ final class Json
         }
         /** @psalm-suppress DocblockTypeContradiction */
         if (!is_string($value)) {
-            /** @psalm-suppress MixedArgument */
+            /** @psalm-suppress NoValue */
             self::populateObject($value, $data);
-            /** @psalm-suppress InvalidReturnStatement */
+            /** @psalm-suppress NoValue */
             return $value;
         }
         if (!class_exists($value)) {

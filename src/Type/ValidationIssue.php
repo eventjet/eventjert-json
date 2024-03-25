@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Eventjet\Json\Type;
 
 use Stringable;
+
 use function sprintf;
 
 final class ValidationIssue implements Stringable

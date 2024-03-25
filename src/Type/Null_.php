@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Eventjet\Json\Type;
 
+use function json_encode;
+use function sprintf;
+
 final class Null_ extends JsonType
 {
     /**
@@ -18,11 +21,11 @@ final class Null_ extends JsonType
         return 'null';
     }
 
-    public function validateDecoded(mixed $value, string $path = ''): ValidationResult
+    public function validateValue(mixed $value, string $path = ''): ValidationResult
     {
         if ($value === null) {
             return ValidationResult::valid();
         }
-        return ValidationResult::error(sprintf('Expected null, got %s.', JsonType::fromDecoded($value)), $path);
+        return ValidationResult::error(sprintf('Expected null, got %s.', json_encode($value)), $path);
     }
 }

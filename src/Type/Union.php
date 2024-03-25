@@ -5,24 +5,29 @@ declare(strict_types=1);
 namespace Eventjet\Json\Type;
 
 use Stringable;
+
+use function array_key_last;
 use function array_slice;
 use function array_values;
-use function count;
+use function implode;
+use function json_encode;
 use function ksort;
+use function sprintf;
+
 use const SORT_STRING;
 
 final class Union extends JsonType
 {
-    /** @var list<JsonType> */
+    /** @var non-empty-list<JsonType> */
     public readonly array $types;
 
     /**
      * @no-named-arguments
      * @internal Use {@see JsonType::union()} or the instance method {@see JsonType::or()} instead.
      */
-    public function __construct(JsonType ...$types)
+    public function __construct(JsonType $first, JsonType $second, JsonType ...$other)
     {
-        $this->types = $types;
+        $this->types = [$first, $second, ...$other];
     }
 
     /**
@@ -30,11 +35,9 @@ final class Union extends JsonType
      */
     private static function disjunction(array $parts): string
     {
-        if (count($parts) === 1) {
-            return (string)$parts[0];
-        }
         $commaSeparated = implode(', ', array_slice($parts, 0, -1));
-        return $commaSeparated . ' or ' . $parts[count($parts) - 1];
+        $last = $parts[array_key_last($parts)];
+        return sprintf('%s or %s', $commaSeparated, $last);
     }
 
     public function __toString(): string
@@ -42,25 +45,23 @@ final class Union extends JsonType
         return implode(' | ', $this->types);
     }
 
-    public function validateDecoded(mixed $value, string $path = ''): ValidationResult
+    public function validateValue(mixed $value, string $path = ''): ValidationResult
     {
-        $errors = [];
         foreach ($this->types as $type) {
-            $result = $type->validateDecoded($value, $path);
-            if ($result->isValid()) {
-                return $result;
+            $result = $type->validateValue($value, $path);
+            if (!$result->isValid()) {
+                continue;
             }
-            $errors[] = $result;
+            return $result;
         }
         $expected = self::disjunction($this->canonicalize()->types);
         return ValidationResult::error(
-            sprintf('Expected %s, got %s.', $expected, JsonType::fromDecoded($value)),
+            sprintf('Expected %s, got %s.', $expected, json_encode($value)),
             $path,
-            ...$errors,
         );
     }
 
-    public function canonicalize(): JsonType
+    public function canonicalize(): static
     {
         $types = [];
         foreach ($this->types as $type) {
@@ -70,5 +71,4 @@ final class Union extends JsonType
         ksort($types, SORT_STRING);
         return new self(...array_values($types));
     }
-
 }

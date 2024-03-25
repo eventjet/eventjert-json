@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Eventjet\Json\Type;
 
 use Stringable;
-use function array_is_list;
-use function array_values;
-use function gettype;
+
 use function json_decode;
 use function json_last_error;
+use function sprintf;
+
 use const JSON_ERROR_NONE;
 
+/**
+ * @phpstan-type JsonValue array<array-key, mixed> | bool | string | float | int | null
+ */
 abstract class JsonType implements Stringable
 {
     public static function array(JsonType $elementType): Array_
@@ -57,68 +60,34 @@ abstract class JsonType implements Stringable
         return Boolean::true();
     }
 
-    public static function union(JsonType ...$types): Union
-    {
-        return new Union(...$types);
-    }
-
-    public static function fromDecoded(mixed $value): self
-    {
-        return match (gettype($value)) {
-            'array' => array_is_list($value)
-                ? self::arrayFromDecoded($value)
-                : self::objectFromDecoded($value),
-            'boolean' => $value ? static::true() : static::false(),
-            'string' => static::string(),
-            'double', 'integer' => static::number(),
-            'NULL' => static::null(),
-        };
-    }
-
     /**
-     * @param list<mixed> $elements
+     * @no-named-arguments
      */
-    private static function arrayFromDecoded(array $elements): Array_
+    public static function union(JsonType $first, JsonType $second, JsonType ...$other): Union
     {
-        $elementTypes = [];
-        foreach ($elements as $element) {
-            $type = self::fromDecoded($element);
-            $elementTypes[(string)$type] = $type;
-        }
-        return self::array(self::union(...array_values($elementTypes)));
-    }
-
-    /**
-     * @param array<array-key, mixed> $value
-     */
-    private static function objectFromDecoded(array $value): Object_
-    {
-        $members = [];
-        foreach ($value as $key => $element) {
-            $members[(string)$key] = Member::required(self::fromDecoded($element));
-        }
-        return self::object($members);
+        return new Union($first, $second, ...$other);
     }
 
     protected static function joinPath(string $prefix, string|int $key): string
     {
-        return $prefix === '' ? (string)$key : $prefix . '.' . $key;
+        return $prefix === '' ? (string)$key : sprintf("%s.%d", $prefix, $key);
     }
 
-    abstract public function validateDecoded(mixed $value, string $path = ''): ValidationResult;
+    abstract public function validateValue(mixed $value, string $path = ''): ValidationResult;
 
     public function or(self $other): Union
     {
         return new Union($this, $other);
     }
 
-    final function validate(string $json): ValidationResult
+    final public function validate(string $json): ValidationResult
     {
+        /** @var JsonValue $decoded */
         $decoded = json_decode($json, true);
-        if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE) {
             return ValidationResult::error('Invalid JSON', '');
         }
-        return static::validateDecoded($decoded, '');
+        return static::validateValue($decoded, '');
     }
 
     /**
@@ -132,4 +101,9 @@ abstract class JsonType implements Stringable
     {
         return $this;
     }
+
+    /**
+     * Returns a string representation of the type in TypeScript syntax.
+     */
+    abstract public function __toString(): string;
 }

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Eventjet\Json\Type;
 
+use function gettype;
 use function is_bool;
+use function json_encode;
+use function sprintf;
 
 final class Boolean extends JsonType
 {
@@ -31,7 +34,7 @@ final class Boolean extends JsonType
         return new self(false);
     }
 
-    public function validateDecoded(mixed $value, string $path = ''): ValidationResult
+    public function validateValue(mixed $value, string $path = ''): ValidationResult
     {
         if ($this->value === null) {
             if (!is_bool($value)) {
@@ -42,9 +45,8 @@ final class Boolean extends JsonType
         if ($value === $this->value) {
             return ValidationResult::valid();
         }
-        $actual = JsonType::fromDecoded($value);
         return ValidationResult::error(
-            sprintf('Expected %s, got %s.', $this->value ? 'true' : 'false', $value ? 'true' : 'false'),
+            sprintf('Expected %s, got %s.', json_encode($this->value), json_encode($value)),
             $path,
         );
     }

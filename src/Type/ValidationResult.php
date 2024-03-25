@@ -30,11 +30,11 @@ final class ValidationResult
      */
     public static function merge(array $results): self
     {
-        $issues = [[]];
+        $issues = [];
         foreach ($results as $result) {
             $issues[] = $result->issues;
         }
-        return new self(array_merge(...$issues));
+        return new self(array_merge([], ...$issues));
     }
 
     public function isValid(): bool
