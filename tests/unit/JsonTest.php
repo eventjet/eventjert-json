@@ -32,6 +32,8 @@ use Eventjet\Test\Unit\Json\Fixtures\TakesStringStringMap;
 use Eventjet\Test\Unit\Json\Fixtures\UndocumentedListItemType;
 use Eventjet\Test\Unit\Json\Fixtures\UndocumentedListItemTypeNoDocblock;
 use Eventjet\Test\Unit\Json\Fixtures\UndocumentedMap;
+use Eventjet\Test\Unit\Json\Fixtures\UnionWithNoConverter;
+use Eventjet\Test\Unit\Json\Fixtures\UnionWithNoFieldAttribute;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFile;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFileAttribute;
 use Eventjet\Test\Unit\Json\Fixtures\Worldline\AccountOnFileAttributeMustWriteReason;
@@ -301,6 +303,15 @@ final class JsonTest extends TestCase
                 self::assertNull($object->map);
             },
         ];
+        yield 'Constructor param has union type' => [
+            '{"value":{"full_name":"John"}}',
+            HasUnionType::class,
+            static function (object $object): void {
+                self::assertInstanceOf(HasUnionType::class, $object);
+                self::assertInstanceOf(Person::class, $object->value);
+                self::assertSame('John', $object->value->fullName);
+            },
+        ];
     }
 
     /**
@@ -430,11 +441,15 @@ final class JsonTest extends TestCase
             HasIntersectionType::class,
             'Intersection types are not supported',
         ];
-        // We might be able to support union types later
-        yield 'Constructor param has union type' => [
-            '{"value":{"datetime":"2023-01-23T12:34:56+00:00"}}',
-            HasUnionType::class,
-            'Union types are not supported',
+        yield 'Object union without a Field attribute' => [
+            '{"value":{"full_name":"John Doe"}}',
+            UnionWithNoFieldAttribute::class,
+            'Property "value" has a union type, but no converter is set',
+        ];
+        yield 'Object union without a converter' => [
+            '{"value":{"full_name":"John Doe"}}',
+            UnionWithNoConverter::class,
+            'Property "value" has a union type, but no converter is set',
         ];
         yield 'Non-array value for object constructor type' => [
             '{"displayHints":"not-an-object"}',

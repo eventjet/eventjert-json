@@ -6,10 +6,10 @@ namespace Eventjet\Test\Unit\Json\Fixtures;
 
 use Eventjet\Json\Field;
 
-final class HasUnionType
+final class UnionWithNoConverter
 {
     public function __construct(
-        #[Field(converter: PersonVehicleUnion::class)] public readonly Person|Vehicle $value,
+        #[Field(name: 'value')] public readonly Person|Vehicle $value,
     ) {
     }
 }
