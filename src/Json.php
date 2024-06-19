@@ -62,6 +62,41 @@ final class Json
     }
 
     /**
+     * @template T of object
+     * @param class-string<T> $class
+     * @param array<array-key, mixed> $data
+     * @return T
+     */
+    public static function instantiateClass(string $class, array $data): object
+    {
+        $classReflection = new ReflectionClass($class);
+        $constructor = $classReflection->getConstructor();
+        $arguments = [];
+        if ($constructor !== null) {
+            $parameters = $constructor->getParameters();
+            foreach ($parameters as $parameter) {
+                $name = $parameter->getName();
+                if (!array_key_exists($name, $data)) {
+                    if ($parameter->isOptional()) {
+                        /** @psalm-suppress MixedAssignment */
+                        $arguments[] = $parameter->getDefaultValue();
+                        continue;
+                    }
+                    throw JsonError::decodeFailed(sprintf('Missing required constructor argument "%s"', $name));
+                }
+                /** @psalm-suppress MixedAssignment */
+                $arguments[] = self::createConstructorArgument($parameter, $data[$name]);
+                unset($data[$name]);
+            }
+        }
+        $instance = $classReflection->newInstanceArgs($arguments);
+        if ($data !== []) {
+            self::populateObject($instance, $data);
+        }
+        return $instance;
+    }
+
+    /**
      * @psalm-suppress MixedInferredReturnType
      * @return string|int|float|bool|array<array-key, mixed>|null
      */
@@ -258,41 +293,15 @@ final class Json
         return $object;
     }
 
-    /**
-     * @param class-string $class
-     * @param array<array-key, mixed> $data
-     */
-    private static function instantiateClass(string $class, array $data): object
-    {
-        $classReflection = new ReflectionClass($class);
-        $constructor = $classReflection->getConstructor();
-        $arguments = [];
-        if ($constructor !== null) {
-            $parameters = $constructor->getParameters();
-            foreach ($parameters as $parameter) {
-                $name = $parameter->getName();
-                if (!array_key_exists($name, $data)) {
-                    if ($parameter->isOptional()) {
-                        /** @psalm-suppress MixedAssignment */
-                        $arguments[] = $parameter->getDefaultValue();
-                        continue;
-                    }
-                    throw JsonError::decodeFailed(sprintf('Missing required constructor argument "%s"', $name));
-                }
-                /** @psalm-suppress MixedAssignment */
-                $arguments[] = self::createConstructorArgument($parameter, $data[$name]);
-                unset($data[$name]);
-            }
-        }
-        $instance = $classReflection->newInstanceArgs($arguments);
-        if ($data !== []) {
-            self::populateObject($instance, $data);
-        }
-        return $instance;
-    }
-
     private static function createConstructorArgument(ReflectionParameter $parameter, mixed $jsonValue): mixed
     {
+        $fieldAttributes = $parameter->getAttributes(Field::class);
+        if ($fieldAttributes !== []) {
+            $handler = $fieldAttributes[0]->newInstance()->converter;
+            if ($handler !== null) {
+                return $handler::fromJson($jsonValue);
+            }
+        }
         $type = $parameter->getType();
         if ($type === null) {
             return $jsonValue;
@@ -301,7 +310,9 @@ final class Json
             return self::createConstructorArgumentForNamedType($parameter, $jsonValue);
         }
         if ($type instanceof ReflectionUnionType) {
-            return self::createConstructorArgumentForUnionType();
+            throw JsonError::decodeFailed(
+                sprintf('Property "%s" has a union type, but no converter is set', $parameter->getName()),
+            );
         }
         return self::createConstructorArgumentForIntersectionType();
     }
@@ -355,11 +366,6 @@ final class Json
             );
         }
         return self::instantiateClass($typeName, $value);
-    }
-
-    private static function createConstructorArgumentForUnionType(): mixed
-    {
-        throw JsonError::decodeFailed('Union types are not supported');
     }
 
     private static function createConstructorArgumentForIntersectionType(): mixed
